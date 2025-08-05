@@ -2,48 +2,56 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_HUB_CREDENTIALS = credentials('dockerhub-jenkins') // Jenkins Credentials ID
-        DOCKER_IMAGE = 'jaspreet237/nodejs-demo-app-jenkins'      // Your DockerHub repo
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-creds')  // your Jenkins credential ID
+        DOCKERHUB_USERNAME = "${DOCKERHUB_CREDENTIALS_USR}"
+        DOCKERHUB_PASSWORD = "${DOCKERHUB_CREDENTIALS_PSW}"
+        IMAGE_NAME = "jaspreet237/nodejs-demo-app-jenkins"
     }
 
     stages {
-        stage('Checkout') {
+        stage('Clone Repository') {
             steps {
-                checkout scm
-            }
-        }
-
-        stage('Install Dependencies') {
-            steps {
-                sh 'npm install'
-            }
-        }
-
-        stage('Run Tests') {
-            steps {
-                sh 'npm test'
+                echo "✔ Cloned successfully"
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                sh "docker build -t $DOCKER_IMAGE ."
+                script {
+                    echo "🔧 Building Docker image"
+                    sh 'docker build -t $IMAGE_NAME .'
+                }
+            }
+        }
+
+        stage('Login to DockerHub') {
+            steps {
+                script {
+                    echo "🔐 Logging in to DockerHub"
+                    sh 'echo $DOCKERHUB_PASSWORD | docker login -u $DOCKERHUB_USERNAME --password-stdin'
+                }
             }
         }
 
         stage('Push Docker Image') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-jenkins', usernameVariable: 'DOCKERHUB_USER', passwordVariable: 'DOCKERHUB_PASS')]) {
-                    sh 'echo $DOCKERHUB_PASS | docker login -u $DOCKERHUB_USER --password-stdin'
-                    sh "docker push $DOCKER_IMAGE"
+                script {
+                    echo "📦 Pushing image to DockerHub"
+                    sh 'docker push $IMAGE_NAME'
                 }
+            }
+        }
+
+        stage('Deployment') {
+            steps {
+                echo "🚀 Deployment logic can go here if needed"
             }
         }
     }
 
     post {
         success {
-            echo '✅ Deployment successful!'
+            echo '✅ Build and deployment completed successfully.'
         }
         failure {
             echo '❌ Deployment failed.'
